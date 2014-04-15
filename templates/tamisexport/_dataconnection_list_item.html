@@ -1,0 +1,32 @@
+{% load url from future %}
+{% load i18n %}
+
+<article>
+  <div class="content">
+    <h3 class="datatitle">
+      {{dataconnection.title}}
+    </h3>
+    <div class="dataabstract">
+      {{ dataconnection.abstract|slice:":255"}}
+    </div>
+    <div>
+      Refreshed: {{ dataconnection.lastedit_date|date:"d b Y H:i a" }}
+    </div>
+    <div class="dataactions">
+      <a href="/tamisexport/{{ dataconnection.id }}" class="button">
+        Details
+      </a>
+      <a href="/tamisexport/{{ dataconnection.id }}/edit" class="button">
+        Edit
+      </a>
+      <a href="/tamisexport/{{ dataconnection.id }}/refresh" class="button button-warn">
+        Refresh
+      </a>
+      <a href="/tamisexport/{{ dataconnection.id }}/delete" class="button button-warn">
+        Remove
+      </a>
+    </div>
+
+  </div> <!-- /.content -->
+  <hr size="2px" style="color:black">
+</article>

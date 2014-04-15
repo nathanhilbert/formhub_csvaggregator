@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Create Data Connection{% endblock %}
+
+{% block body_class %}datamanager{% endblock %}
+
+{% block content %}
+
+{% if dataconnection %}
+    {% include "tamisexport/_dataconnection_contentheader.html" %}
+{% endif %}
+
+
+<form class="form-horizontal" method="POST">
+
+
+    {% if dataconnection_form.errors %}
+	<div style="background-color: pink">{% blocktrans %}Error updating metadata.  Please check the following fields: {% endblocktrans %}
+            <ul>
+        {% for field in dataconnection_form %}
+            {% if field.errors %}
+                <li>{{ field.label }}</li>
+            {% endif %}
+        {% endfor %}
+
+
+            </ul>
+        </div>
+    {% endif %}
+    <br/>
+    {% csrf_token %}
+    <div class="form-actions">
+      <input type="submit" class="btn btn-primary" value="{% trans "Save" %}"/>
+    </div>
+    <div class="form-controls">
+      {{ dataconnection_form }}
+    </div>
+    <div class="form-actions">
+      <input type="submit" class="btn btn-primary" value="{% trans "Save" %}"/>
+    </div>
+  </form>
+
+{% endblock %}
+{% block extra_script %}
+ <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.9.1.js"></script>
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+<script>
+  $(function() {
+    $( ".datepicker" ).datepicker();
+  });
+  </script>
+{% endblock %}

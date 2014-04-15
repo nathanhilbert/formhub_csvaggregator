@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+
+{% block title %}Data Connection Details{% endblock %}
+
+{% block body_class %}datamanager{% endblock %}
+
+{% block content %}  
+
+
+<div class="datacon_content">
+  {% include "tamisexport/_dataconnection_list_item.html" %}
+  {% include "tamisexport/_dataconnection_contentheader.html" %}
+</div>
+
+<div class="extracontent">
+
+    <div>
+        Last Time Data was refreshed: {{ dataconnection.lastedit_date|date:"d b Y H:i a" }}
+    </div>
+    <div>
+        Refresh Frequency: {{dataconnection.update_freq}}
+    </div>
+    <div>
+    {{ dataconnection.description }}
+    </div>
+
+</div>
+
+{% endblock %}
+{% block extra_script %}
+ <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.9.1.js"></script>
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+{% endblock %}
