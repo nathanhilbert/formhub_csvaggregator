@@ -36,6 +36,12 @@ class TAMISConnectionCreateForm(forms.ModelForm):
 
     class Meta:
         model = TAMISConnection
-        exclude = ('creation_date', 'lastedit_date',)
+        exclude = ('creation_date', 'lastedit_date', 'openrefine_projectnumber', 'openrefine_transformation', 'tamis_formname',)
 
+class TAMISConnectionEditForm(forms.ModelForm):
 
+    openrefine_transformation = forms.CharField(widget=forms.Textarea)
+
+    class Meta:
+        model = TAMISConnection
+        exclude = ('owner', 'creation_date', 'lastedit_date', 'description_con', 'formid', 'title', 'tamis_url','tamis_username','tamis_password','update_freq','openrefine_projectnumber',)

@@ -85,6 +85,14 @@ class TAMISConnection(models.Model):
 
     update_freq = models.CharField(_('Update Frequency'), max_length=255, help_text=_('Automatically pull in data from Formhub'))
 
+    tamis_formname = models.CharField(_('TAMIS Form Name'), max_length=255, help_text=_('The Formname to use'))
+
+    openrefine_transformation = models.TextField(_('Transformation Text'), blank=True, help_text=_('The Formname to use'))
+    openrefine_projectnumber = models.CharField(_('OpenRefine project Number'), max_length=255, blank=True, null=True, help_text=_('To be used by OpenRefine'))
+
+
+
+
 
     def refresh(self):
         from odk_viewer.models import Export
@@ -92,27 +100,23 @@ class TAMISConnection(models.Model):
         fileobject = generate_export(Export.CSV_EXPORT, 'autobak', self.formid.user.username, self.formid.id_string,
                     export_id=None, filter_query=None, group_delimiter='~',
                     split_select_multiples=False)
-        print fileobject.filedir
-        print fileobject.filename
-        print fileobject.internal_status
 
-        #layerurl = dataconnection.getLayerURL()
+        with open(fileobject.full_filepath, 'rb') as f:
+            content = f.read()
 
-        #url = 'http://dominodev.daiglobal.net/Projects/Afghanistan/SIKANorthTAMIS_Test.nsf/opencsv'   
-        url = self.tamis_url
+        ### Only for dominodev
         auth = base64.encodestring(self.tamis_username + ':' + self.tamis_password)
         headers = {'Authorization' : 'Basic ' + auth}
         http = httplib2.Http(".cache", disable_ssl_certificate_validation=True)
         http.add_credentials(self.tamis_username, self.tamis_password)
-        params = urlencode(dict(content="asdf,asdf,asdf,asdf,asd,fas,df,asdf,as,df,asdf,asdf", username=self.tamis_username, password=self.tamis_password))
-        resp, content = http.request(url, "POST", params, headers=headers)
+
+        #http = httplib2.Http()
+        params = urlencode(dict(body=content, username=self.tamis_username, password=self.tamis_password))
+        #params = urlencode(dict(body=content, dummyvar="dummyvar"))
+        resp, content = http.request(self.tamis_url, "POST", params, headers=headers)
+        #resp, content = http.request(url, "POST", params)
         print resp.status, content
 
-        #new_layer = createLayerFromCSV(self)
-        #if new_layer:
-        #    self.layer_name = new_layer.typename
-        #    self.lastedit_date = datetime.now()
-        #    self.save()
         return
 
 

@@ -46,8 +46,10 @@ from django.forms.util import ErrorList
 #from geonode.datamanager.enumerations import ENUMTIMES
 
 from tamisexport.models import TAMISConnection
-from tamisexport.forms import TAMISConnectionCreateForm
+from tamisexport.forms import TAMISConnectionCreateForm, TAMISConnectionEditForm
 from tamisexport.tamisutils import testFormhubConnection
+
+from google.refine import refine
 
 from datetime import datetime, timedelta 
 from time import time
@@ -56,6 +58,10 @@ import cPickle as pickle
 import operator
 import logging
 import zlib
+
+from utils.export_tools import generate_export
+from odk_viewer.models import Export
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -88,7 +94,7 @@ def tamisexport_create(request, template='tamisexport/dataconnection_create.html
             errors = dataconnection_form._errors.setdefault("tamis_url", ErrorList())
             errors.append(msg)
         else:
-            dataconnection = dataconnection_form.save()
+            tamiscon = dataconnection_form.save()
             #redirect
             #return HttpResponseRedirect(reverse('/datamanager/' + str(dataconnection.id) + '/edit'))#, args=(layer.typename,)))
             return HttpResponseRedirect(reverse('tamisexport'))
@@ -101,36 +107,56 @@ def tamisexport_create(request, template='tamisexport/dataconnection_create.html
     #     new_keywords = layer_form.cleaned_data['keywords']
 
 
+
     return render_to_response(template, RequestContext(request, {
         "dataconnection_form": dataconnection_form,
     }))
 
 
 @login_required
-def tamisexport_edit(request, id, template='tamisexport/dataconnection_create.html'):
+def tamisexport_edit(request, id, template='tamisexport/dataconnection_edit.html'):
 
     #double check dataconnection
     dataconnection = TAMISConnection.objects.get(id=int(id))
+    tamiscon = dataconnection
 
 
     if request.method == "POST":
-        dataconnection_form = TAMISConnectionCreateForm(request.POST, instance=dataconnection, TAMISConnection=dataconnection)
+        dataconnection_form = TAMISConnectionEditForm(request.POST, instance=dataconnection)
 
     else:
-        dataconnection_form = TAMISConnectionCreateForm(instance=dataconnection, TAMISConnection=dataconnection)
+        dataconnection_form = TAMISConnectionEditForm(instance=dataconnection)
 
     if request.method == "POST" and dataconnection_form.is_valid():
         dataconnection = dataconnection_form.save()
+        refiner = refine.RefineProject(server="http://localhost:3333", project_id=int(tamiscon.openrefine_projectnumber))
+        refiner.delete()
+        tamiscon.openrefine_projectnumber = ""
+        tamiscon.save()
         #dataconnection.refresh()
         #redirect to layer
         return HttpResponseRedirect(reverse('tamisexport'))#, args=(layer.typename,)))
 
+    #add check to ensure no one else is modifying
 
-
-    # if request.method == "POST" and layer_form.is_valid():
-    #     new_poc = layer_form.cleaned_data['poc']
-    #     new_author = layer_form.cleaned_data['metadata_author']
-    #     new_keywords = layer_form.cleaned_data['keywords']
+    refiner = refine.Refine(server="http://localhost:3333")
+    fileobject = generate_export(Export.CSV_EXPORT, 'csv', tamiscon.formid.user.username, tamiscon.formid.id_string,
+        export_id=None, filter_query=None, group_delimiter='~',
+        split_select_multiples=False)
+    refineproj = refiner.new_project(project_file=fileobject.full_filepath,
+        project_name=tamiscon.title,
+        store_blank_rows=False)
+    if refineproj.project_id:
+        tamiscon.openrefine_projectnumber = refineproj.project_id
+        tamiscon.save()
+    if tamiscon.openrefine_transformation and tamiscon.openrefine_transformation != "":
+        import json
+        entryobject = json.loads(tamiscon.openrefine_transformation)
+        operations = []
+        for entry in entryobject['entries']:
+            operations.append(entry['operation'])
+        data = {'operations': json.dumps(operations)}
+        r = refineproj.do_json("apply-operations", data=data)
 
 
     return render_to_response(template, RequestContext(request, {
@@ -150,6 +176,33 @@ def tamisexport_details(request, id, template='tamisexport/dataconnection_detail
     dataconnection = TAMISConnection.objects.get(id=int(id))
 
     return render_to_response(template, RequestContext(request, {"dataconnection":dataconnection, "layerurl": None}))
+
+@login_required
+def tamisexport_api(request, id):
+    tamiscon = TAMISConnection.objects.get(id=int(id))
+    actionitem = request.GET.get("action", "")
+
+    #params to be migrated to settings and preset
+    BASEURL = "http://localhost:3333/"
+
+    if actionitem == "getops":
+        refiner = refine.RefineProject(server="http://localhost:3333", project_id=int(tamiscon.openrefine_projectnumber))
+        if not refiner:
+            return HttpResponse(json.dumps({"response": "error", "msg": "Could not get project number"}), mimetype="application/json")
+
+        f = refiner.do_raw("get-operations",{})
+
+
+        response_data = {"response":"success","operations":f.read()}
+
+    else:
+        return HttpResponse(json.dumps({"response": "error", "msg": "You must define an action"}), mimetype="application/json")
+
+    #if there is no project id
+    #start up an openrefine project
+    #sendback project link
+
+    return HttpResponse(json.dumps(response_data), mimetype="application/json")
 
 # @login_required
 # def dataconnection_delete(request, id, template='datamanager/dataconnection_confirm_delete.html'):

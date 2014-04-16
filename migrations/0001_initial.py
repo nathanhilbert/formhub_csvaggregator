@@ -12,7 +12,6 @@ class Migration(SchemaMigration):
         db.create_table(u'tamisexport_tamisconnection', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('formid', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['odk_logger.XForm'], null=True, blank=True)),
-            ('userid', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'], null=True, blank=True)),
             ('title', self.gf('django.db.models.fields.CharField')(unique=True, max_length=255)),
             ('creation_date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
             ('lastedit_date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
@@ -21,6 +20,9 @@ class Migration(SchemaMigration):
             ('tamis_username', self.gf('django.db.models.fields.CharField')(max_length=255)),
             ('tamis_password', self.gf('django.db.models.fields.CharField')(max_length=255)),
             ('update_freq', self.gf('django.db.models.fields.CharField')(max_length=255)),
+            ('tamis_formname', self.gf('django.db.models.fields.CharField')(max_length=255)),
+            ('openrefine_transformation', self.gf('django.db.models.fields.TextField')(blank=True)),
+            ('openrefine_projectnumber', self.gf('django.db.models.fields.CharField')(max_length=255)),
         ))
         db.send_create_signal(u'tamisexport', ['TAMISConnection'])
 
@@ -113,12 +115,14 @@ class Migration(SchemaMigration):
             'formid': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['odk_logger.XForm']", 'null': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'lastedit_date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
+            'openrefine_projectnumber': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
+            'openrefine_transformation': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
+            'tamis_formname': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'tamis_password': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'tamis_url': ('django.db.models.fields.URLField', [], {'max_length': '200'}),
             'tamis_username': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'title': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'}),
-            'update_freq': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
-            'userid': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
+            'update_freq': ('django.db.models.fields.CharField', [], {'max_length': '255'})
         }
     }
 
