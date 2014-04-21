@@ -129,34 +129,17 @@ def tamisexport_edit(request, id, template='tamisexport/dataconnection_edit.html
 
     if request.method == "POST" and dataconnection_form.is_valid():
         dataconnection = dataconnection_form.save()
-        refiner = refine.RefineProject(server="http://localhost:3333", project_id=int(tamiscon.openrefine_projectnumber))
-        refiner.delete()
-        tamiscon.openrefine_projectnumber = ""
-        tamiscon.save()
+        tamiscon.deleteOR()
         #dataconnection.refresh()
         #redirect to layer
         return HttpResponseRedirect(reverse('tamisexport'))#, args=(layer.typename,)))
 
     #add check to ensure no one else is modifying
 
-    refiner = refine.Refine(server="http://localhost:3333")
-    fileobject = generate_export(Export.CSV_EXPORT, 'csv', tamiscon.formid.user.username, tamiscon.formid.id_string,
-        export_id=None, filter_query=None, group_delimiter='~',
-        split_select_multiples=False)
-    refineproj = refiner.new_project(project_file=fileobject.full_filepath,
-        project_name=tamiscon.title,
-        store_blank_rows=False)
-    if refineproj.project_id:
-        tamiscon.openrefine_projectnumber = refineproj.project_id
-        tamiscon.save()
-    if tamiscon.openrefine_transformation and tamiscon.openrefine_transformation != "":
-        import json
-        entryobject = json.loads(tamiscon.openrefine_transformation)
-        operations = []
-        for entry in entryobject['entries']:
-            operations.append(entry['operation'])
-        data = {'operations': json.dumps(operations)}
-        r = refineproj.do_json("apply-operations", data=data)
+    
+    refineproj = tamiscon.createOR()
+
+    tamiscon.applyOR(refineproj)
 
 
     return render_to_response(template, RequestContext(request, {
@@ -194,7 +177,9 @@ def tamisexport_api(request, id):
 
 
         response_data = {"response":"success","operations":f.read()}
-
+    elif actionitem == "delete":
+        tamiscon.deleteOR()
+        response_data = {"response":"success"}
     else:
         return HttpResponse(json.dumps({"response": "error", "msg": "You must define an action"}), mimetype="application/json")
 
@@ -204,23 +189,23 @@ def tamisexport_api(request, id):
 
     return HttpResponse(json.dumps(response_data), mimetype="application/json")
 
-# @login_required
-# def dataconnection_delete(request, id, template='datamanager/dataconnection_confirm_delete.html'):
-#     #double check dataconnection
-#     dataconnection = DataConnection.objects.get(id=int(id))
+@login_required
+def tamisexport_delete(request, id, template='tamisexport/dataconnection_confirm_delete.html'):
+    #double check dataconnection
+    dataconnection = TAMISConnection.objects.get(id=int(id))
 
 
-#     confirm = request.GET.get('confirm', None)
-#     cancel = request.GET.get('cancel', None)
-#     if confirm == "Confirm":
-#         dataconnection.delete()
-#         return HttpResponseRedirect(reverse('datamanager'))
-#     elif cancel == "Cancel":
-#         return HttpResponseRedirect(reverse('dataconnection_details', args=(dataconnection.id,)))
+    confirm = request.GET.get('confirm', None)
+    cancel = request.GET.get('cancel', None)
+    if confirm == "Confirm":
+        dataconnection.delete()
+        return HttpResponseRedirect(reverse('tamisexport'))
+    elif cancel == "Cancel":
+        return HttpResponseRedirect(reverse('tamisexport_details', args=(dataconnection.id,)))
 
-#     return render_to_response(template, RequestContext(request, {
-#         "dataconnection": dataconnection,
-#     }))
+    return render_to_response(template, RequestContext(request, {
+        "dataconnection": dataconnection,
+    }))
 
 # from django.utils.timezone import utc
 
