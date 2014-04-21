@@ -43,6 +43,7 @@ from tamisexport.enumerations import DATAUPDATE_FREQ
 import base64
 import httplib2
 from urllib import urlencode
+from google.refine import refine
 
 
 
@@ -55,6 +56,7 @@ from urllib import urlencode
 #from geonode.datamanager.utils import createLayerFromCSV
 from django.utils.timezone import utc
 from utils.export_tools import generate_export
+from odk_viewer.models import Export
 
 
 #from taggit.managers import TaggableManager
@@ -88,21 +90,71 @@ class TAMISConnection(models.Model):
     tamis_formname = models.CharField(_('TAMIS Form Name'), max_length=255, help_text=_('The Formname to use'))
 
     openrefine_transformation = models.TextField(_('Transformation Text'), blank=True, help_text=_('The Formname to use'))
-    openrefine_projectnumber = models.CharField(_('OpenRefine project Number'), max_length=255, blank=True, null=True, help_text=_('To be used by OpenRefine'))
+    openrefine_projectnumber = models.CharField(_('OpenRefine project Number'), max_length=255, blank=True, null=True, default="", help_text=_('To be used by OpenRefine'))
 
+    def createOR(self):
+        refiner = refine.Refine(server="http://localhost:3333")
+        fileobject = generate_export(Export.CSV_EXPORT, 'csv', self.formid.user.username, self.formid.id_string,
+            export_id=None, filter_query=None, group_delimiter='~',
+            split_select_multiples=False)
+        #need to replace the n/as of the formhub exports
+        tempcontents = ""
+        with open(fileobject.full_filepath, 'rb') as thefile:
+            tempcontents = thefile.read()
+        thefile.close()
+        tempcontents = tempcontents.replace("n/a","")
+        with open(fileobject.full_filepath, 'wb') as thefile:
+            thefile.write(tempcontents)
 
+        refineproj = refiner.new_project(project_file=fileobject.full_filepath,
+            project_name=self.title,
+            store_blank_rows=True,
+            store_blank_cells_as_nulls=True)
+        if refineproj.project_id:
+            self.openrefine_projectnumber = refineproj.project_id
+            self.save()
+            return refineproj
+        else:
+            return None
 
+    def applyOR(self, refineproj):
+        if self.openrefine_transformation and self.openrefine_transformation != "":
+            import json
+            entryobject = json.loads(self.openrefine_transformation)
+            operations = []
+            print entryobject
+            for entry in entryobject['entries']:
+                if 'operation' in entry.keys():
+                    operations.append(entry['operation'])
+            data = {'operations': json.dumps(operations)}
+            r = refineproj.do_json("apply-operations", data=data)
+            return True
+        else:
+            return None
+
+    def deleteOR(self, refineproj=None):
+        if not refineproj:
+            refiner = refine.RefineProject(server="http://localhost:3333", project_id=int(self.openrefine_projectnumber))
+        else:
+            refiner = refineproj
+        refiner.delete()
+        self.openrefine_projectnumber = ""
+        self.save()
+        return True
+
+    def getUpdatedCSV(self, asText=True):
+        refineproj = self.createOR()
+        self.applyOR(refineproj)
+        f = refineproj.export(export_format='csv')
+        self.deleteOR(refineproj)
+        return f.read()
 
 
     def refresh(self):
         from odk_viewer.models import Export
-        #query on last update
-        fileobject = generate_export(Export.CSV_EXPORT, 'autobak', self.formid.user.username, self.formid.id_string,
-                    export_id=None, filter_query=None, group_delimiter='~',
-                    split_select_multiples=False)
-
-        with open(fileobject.full_filepath, 'rb') as f:
-            content = f.read()
+        #create the project
+        #apply operations
+        content = self.getUpdatedCSV()
 
         ### Only for dominodev
         auth = base64.encodestring(self.tamis_username + ':' + self.tamis_password)
