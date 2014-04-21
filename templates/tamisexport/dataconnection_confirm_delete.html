@@ -1,4 +1,4 @@
-{% extends "site_base.html" %}
+{% extends "base.html" %}
 {% load i18n %}
 {% load staticfiles %}
 {% load url from future %}
@@ -7,7 +7,7 @@
 
 {% block body_class %}datamanager{% endblock %}
 
-{% block body_outer %}
+{% block content %}
     <div class="span12">
       <h2 class="page-title">{{dataconnection.title}}</h2>
       <div>

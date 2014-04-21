@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Create Data Connection{% endblock %}
+
+{% block body_class %}datamanager{% endblock %}
+
+{% block content %}
+
+{% if dataconnection %}
+    {% include "tamisexport/_dataconnection_contentheader.html" %}
+{% endif %}
+
+
+<form class="form-horizontal" method="POST" class="ORform">
+
+
+    {% if dataconnection_form.errors %}
+	<div style="background-color: pink">{% blocktrans %}Error updating metadata.  Please check the following fields: {% endblocktrans %}
+        </div>
+    {% endif %}
+      <div id="ajaxerror"></div>
+        <ul>
+          <li>1.Go to OpenRefine URL: <a href="http://localhost:3333/project?project={{dataconnection.openrefine_projectnumber}}" target=="_blank"> http://localhost:3333/project?project={{dataconnection.openrefine_projectnumber}}</a></li>
+          <li>2. Make edits</li>
+          <li>3. <div id="getORinfo" style="color:red;">Click this</div> to load your operations in the text field</li>
+          <li>4. Click save</li> 
+        </ul>
+            <ul>
+        {% for field in dataconnection_form %}
+            {% if field.errors %}
+                <li>{{ field.label }}</li>
+            {% endif %}
+        {% endfor %}
+
+
+            </ul>
+    <br/>
+    {% csrf_token %}
+    <div class="form-actions">
+      <input type="submit" class="btn btn-primary" value="{% trans "Save" %}"/>
+    </div>
+    <div class="form-controls">
+      {{ dataconnection_form }}
+    </div>
+    <div class="form-actions">
+      <input type="submit" class="btn btn-primary" value="{% trans "Save" %}"/>
+    </div>
+  </form>
+  <script src="//code.jquery.com/jquery-1.9.1.js"></script>
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+<script>
+  $(function() {
+    $("#getORinfo").click(function(){
+      $(this).html("Working...");
+      var projectnumber = {{dataconnection.openrefine_projectnumber}};
+      $.getJSON("/tamisexport/api/{{dataconnection.id}}", {"action":"getops"},
+          function(data){
+            if (data['response'] == "success"){
+              $("#id_openrefine_transformation").val(data['operations']);
+            }
+          });
+
+      $(this).html("Click this");
+    });
+
+    window.onbeforeunload = function(){
+
+            alert("There are unsaved changes on this page.  If you leave this page you will lose this information.");
+
+    };
+    $('form.ORform').submit(function(){
+        window.onbeforeunload = null;
+    });
+/*
+    $(window).on("beforeunload", function() {
+        var yes = confirm("You're about to end your session?  All unsaved edits in OpenRefine will be deleted.");
+        if (yes) {
+          $.getJSON("/tamisexport/api/{{dataconnection.id}}", {"action":"delete"}, function() {
+              return "This is a jQuery version";
+          });
+        }
+      }) 
+*/
+
+
+  });
+  </script>
+
+{% endblock %}
+{% block extra_script %}
+ <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+{% endblock %}
